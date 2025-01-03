@@ -1,5 +1,8 @@
 #include <ncurses.h>
 
+#define BOARD_WIDTH 28
+#define BOARD_HEIGHT 31
+
 typedef struct character
 {
     // Position
@@ -12,7 +15,7 @@ typedef struct character
 0 = point
 2 = empty space
 */
-int board[31][28] = {
+int board[BOARD_HEIGHT][BOARD_WIDTH] = {
 {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
 {1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1},
 {1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1},
@@ -114,21 +117,11 @@ int main()
 */
 void move_character(character* char_moving, char direction)
 {
-    // Get position of the character in the board and neighboring characters
-    int up_index = char_moving->y - 1;
-    int down_index = char_moving->y + 1;
-    int right_index = char_moving->x + 1;
-    int left_index = char_moving->x - 1;
-
-    // Get values in neighbor indexes... if out of range, it's considered empty (0)
-    int up_char = up_index < 0 ? 0 : board[up_index][char_moving->x];
-    int down_char = down_index >= 31 ? 0 : board[down_index][char_moving->x];
-    int right_char = right_index >= 28 ? 0 : board[char_moving->y][right_index];
-    int left_char = left_index < 0 ? 0 : board[char_moving->y][left_index];
-
     switch(direction)
     {
         case 'l':
+            int left_index = char_moving->x - 1;
+            int left_char = left_index < 0 ? 0 : board[char_moving->y][left_index];
             if (!left_char)
             {
                 char_moving->x--;
@@ -136,6 +129,8 @@ void move_character(character* char_moving, char direction)
             break;
 
         case 'r':
+            int right_index = char_moving->x + 1;
+            int right_char = right_index >= 28 ? 0 : board[char_moving->y][right_index];
             if (!right_char) 
             {
                 char_moving->x++;
@@ -143,6 +138,8 @@ void move_character(character* char_moving, char direction)
             break;
         
         case 'd':
+            int down_index = char_moving->y + 1;
+            int down_char = down_index >= 31 ? 0 : board[down_index][char_moving->x];
             if (!down_char)
             {
                 char_moving->y++;
@@ -150,6 +147,8 @@ void move_character(character* char_moving, char direction)
             break;
 
         case 'u':
+            int up_index = char_moving->y - 1;
+            int up_char = up_index < 0 ? 0 : board[up_index][char_moving->x];
             if (!up_char)
             {
                 char_moving->y--;
@@ -163,9 +162,9 @@ Function to initialize the pacman game board.
 */
 void draw_board()
 {
-    for (int row = 0; row < 31; row++)
+    for (int row = 0; row < BOARD_HEIGHT; row++)
     {
-        for (int col = 0; col < 28; col++)
+        for (int col = 0; col < BOARD_WIDTH; col++)
         {
             if (board[row][col] == 1)
             {
