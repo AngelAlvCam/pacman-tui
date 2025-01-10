@@ -1,4 +1,5 @@
 #include <ncurses.h>
+#include <unistd.h>
 
 #define BOARD_WIDTH 28
 #define BOARD_HEIGHT 31
@@ -56,7 +57,8 @@ void move_character(character*);
 int main()
 {
     initscr();
-    keypad(stdscr, TRUE);
+    keypad(stdscr, TRUE); // Enables direction keys
+    timeout(0);
     curs_set(0);
 
     // Enables color    
@@ -103,6 +105,7 @@ int main()
         move_character(&pacman);
         mvaddch(pacman.y, pacman.x, '@');
         refresh();
+        usleep(150000);  // 500,000 microseconds = 0.5 seconds
     }
 
     attroff(COLOR_PAIR(2));
