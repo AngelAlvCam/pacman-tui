@@ -1,5 +1,7 @@
 #include <ncurses.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <time.h>
 
 #define BOARD_WIDTH 28
 #define BOARD_HEIGHT 31
@@ -9,7 +11,7 @@ typedef struct character
     // Position
     int x;
     int y;
-    char direction;
+    int direction;
 } character;
 
 /*
@@ -52,7 +54,8 @@ int board[BOARD_HEIGHT][BOARD_WIDTH] = {
 };
 
 void draw_board();
-void move_character(character*);
+int move_character(character*);
+void move_ghost(character*);
 
 int main()
 {
@@ -65,15 +68,17 @@ int main()
     start_color();
     init_pair(1, COLOR_BLUE, COLOR_BLACK);
     init_pair(2, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(3, COLOR_RED, COLOR_BLACK);
 
     draw_board();
 
     // Create chacter pacman with default position and direction
-    character pacman = {13, 23, 'r'};
+    character pacman = {13, 23, 1}; // 1 == right
+
+    // Create ghost character
+    character ghost = {12, 23, 0};
 
     // Draw chracter
-    attron(COLOR_PAIR(2));
-    mvaddch(pacman.y, pacman.x, '@');
     while (true)
     {
         int ch = getch();
@@ -81,83 +86,125 @@ int main()
         {
             break;
         }
-        mvaddch(pacman.y, pacman.x, ' ');
 
         switch (ch)
         {
         case KEY_LEFT:
-            pacman.direction = 'l';
+            pacman.direction = 0; // left
             break;
             
         case KEY_RIGHT:
-            pacman.direction = 'r';
+            pacman.direction = 1; // right
             break;
 
         case KEY_DOWN:
-            pacman.direction = 'd';
+            pacman.direction = 2; // down
             break;
         
         case KEY_UP:
-            pacman.direction = 'u';
+            pacman.direction = 3; // up
             break;
         }
 
+        // Draw pacman and update position
+        mvaddch(pacman.y, pacman.x, ' ');
         move_character(&pacman);
+        attron(COLOR_PAIR(2));
         mvaddch(pacman.y, pacman.x, '@');
+        attroff(COLOR_PAIR(2));
+
+        // Draw ghost
+        mvaddch(ghost.y, ghost.x, ACS_BULLET);
+        move_ghost(&ghost);
+        attron(COLOR_PAIR(3));
+        mvaddch(ghost.y, ghost.x, '@');
+        attroff(COLOR_PAIR(3));
+
         refresh();
-        usleep(150000);  // 500,000 microseconds = 0.5 seconds
+        usleep(150000);
     }
 
-    attroff(COLOR_PAIR(2));
     endwin();
 
     return 0;
 }
 
+void move_ghost(character* ghost)
+{
+    /* Try to move in the current direnction of the ghost, if there is a collision
+    with a wall, try to move in a different location*/
+
+    if (move_character(ghost) != TRUE)
+    {
+        srand(time(0));
+        int random = rand() % 4;
+        while (random == ghost->direction)
+        {
+            random = rand() % 4;
+        }
+
+        // Update direction
+        ghost->direction = random; 
+        
+    }
+
+}
+
 /*
     Move a character across the board by one unit in a specified direction
-    direction can be 'l', 'r', 'd', 'u' for left, right, down and up.
+    direction can be 0, 1, 2, 3 for left, right, down and up.
+    Direction is a member of character struct.
+    Returns TRUE is there was not a collision with a wall.
+    It updates the x or y members of the character pointer if the movement was
+    succesfull.
 */
-void move_character(character* char_moving)
+int move_character(character* char_moving)
 {
+    int move = FALSE;
+
     switch(char_moving->direction)
     {
-        case 'l':
+        case 0: // left
             int left_index = char_moving->x - 1;
             int left_char = left_index < 0 ? 0 : board[char_moving->y][left_index];
             if (!left_char)
             {
                 char_moving->x--;
+                move = TRUE;
             }
             break;
 
-        case 'r':
+        case 1: // right 
             int right_index = char_moving->x + 1;
             int right_char = right_index >= 28 ? 0 : board[char_moving->y][right_index];
             if (!right_char) 
             {
                 char_moving->x++;
+                move = TRUE;
             }
             break;
         
-        case 'd':
+        case 2: // down
             int down_index = char_moving->y + 1;
             int down_char = down_index >= 31 ? 0 : board[down_index][char_moving->x];
             if (!down_char)
             {
                 char_moving->y++;
+                move = TRUE;
             }
             break;
 
-        case 'u':
+        case 3: // up
             int up_index = char_moving->y - 1;
             int up_char = up_index < 0 ? 0 : board[up_index][char_moving->x];
             if (!up_char)
             {
                 char_moving->y--;
+                move = TRUE;
             }
             break;
     }
+    return move;
 }
 
 /*
