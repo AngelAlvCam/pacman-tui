@@ -107,7 +107,7 @@ int main()
         }
 
         // Draw pacman and update position
-        mvaddch(pacman.y, pacman.x, ' ');
+        mvaddch(pacman.y, pacman.x, ' '); // Each position in which pacman has been turns into a empty space
         move_character(&pacman);
         attron(COLOR_PAIR(2));
         mvaddch(pacman.y, pacman.x, '@');
@@ -145,6 +145,7 @@ void move_ghost(character* ghost)
 
         // Update direction
         ghost->direction = random; 
+        move_character(ghost);
         
     }
 
@@ -167,7 +168,7 @@ int move_character(character* char_moving)
         case 0: // left
             int left_index = char_moving->x - 1;
             int left_char = left_index < 0 ? 0 : board[char_moving->y][left_index];
-            if (!left_char)
+            if (left_char <= 0)
             {
                 char_moving->x--;
                 move = TRUE;
@@ -177,7 +178,7 @@ int move_character(character* char_moving)
         case 1: // right 
             int right_index = char_moving->x + 1;
             int right_char = right_index >= 28 ? 0 : board[char_moving->y][right_index];
-            if (!right_char) 
+            if (right_char <= 0) 
             {
                 char_moving->x++;
                 move = TRUE;
@@ -187,7 +188,7 @@ int move_character(character* char_moving)
         case 2: // down
             int down_index = char_moving->y + 1;
             int down_char = down_index >= 31 ? 0 : board[down_index][char_moving->x];
-            if (!down_char)
+            if (down_char <= 0)
             {
                 char_moving->y++;
                 move = TRUE;
@@ -197,7 +198,7 @@ int move_character(character* char_moving)
         case 3: // up
             int up_index = char_moving->y - 1;
             int up_char = up_index < 0 ? 0 : board[up_index][char_moving->x];
-            if (!up_char)
+            if (up_char <= 0)
             {
                 char_moving->y--;
                 move = TRUE;
