@@ -55,7 +55,8 @@ int board[BOARD_HEIGHT][BOARD_WIDTH] = {
 
 void draw_board();
 int move_character(character*);
-void move_ghost(character*);
+void move_ghost(character*, int);
+void move_pacman(character*, int);
 
 int main()
 {
@@ -67,8 +68,8 @@ int main()
     // Enables color    
     start_color();
     init_pair(1, COLOR_BLUE, COLOR_BLACK);
-    init_pair(2, COLOR_YELLOW, COLOR_BLACK);
-    init_pair(3, COLOR_RED, COLOR_BLACK);
+    init_pair(2, COLOR_YELLOW, COLOR_BLACK); // Pacman color
+    init_pair(3, COLOR_RED, COLOR_BLACK); // Red ghost color
 
     draw_board();
 
@@ -107,18 +108,10 @@ int main()
         }
 
         // Draw pacman and update position
-        mvaddch(pacman.y, pacman.x, ' '); // Each position in which pacman has been turns into a empty space
-        move_character(&pacman);
-        attron(COLOR_PAIR(2));
-        mvaddch(pacman.y, pacman.x, '@');
-        attroff(COLOR_PAIR(2));
+        move_pacman(&pacman, 2);
 
         // Draw ghost
-        mvaddch(ghost.y, ghost.x, ACS_BULLET);
-        move_ghost(&ghost);
-        attron(COLOR_PAIR(3));
-        mvaddch(ghost.y, ghost.x, '@');
-        attroff(COLOR_PAIR(3));
+        move_ghost(&ghost, 3);
 
         refresh();
         usleep(150000);
@@ -129,13 +122,46 @@ int main()
     return 0;
 }
 
-void move_ghost(character* ghost)
+/*
+    Moves pacman based on its current position and direction members.
+    pacman color is the index for the color pallet to print pacman.
+*/
+void move_pacman(character* pacman, int pacman_color)
 {
+    // Add points if the cell value is 0, then flip them to -1
+    if (board[pacman->y][pacman->x] == 0)
+    {
+        // increase one point and mark the cell as 'no points left'
+        board[pacman->y][pacman->x] = -1;
+    }
+
+    // Try to move
+    mvaddch(pacman->y, pacman->x, ' '); // put empty space in current position because there aren't points left in that cell
+    move_character(pacman);
+    attron(COLOR_PAIR(pacman_color));
+    mvaddch(pacman->y, pacman->x, '@');
+    attroff(COLOR_PAIR(pacman_color));
+
+}
+
+void move_ghost(character* ghost, int ghost_color)
+{
+    // if pacman has passed in the current cell, draw empty
+    // otherwise, draw a bullet point
+    if (board[ghost->y][ghost->x] == 0)
+    {
+        mvaddch(ghost->y, ghost->x, ACS_BULLET);
+    }
+    else
+    {
+        mvaddch(ghost->y, ghost->x, ' ');
+    }
+        
     /* Try to move in the current direnction of the ghost, if there is a collision
     with a wall, try to move in a different location*/
-
     if (move_character(ghost) != TRUE)
     {
+        // Change direction to a valid one 
         srand(time(0));
         int random = rand() % 4;
         while (random == ghost->direction)
@@ -143,11 +169,15 @@ void move_ghost(character* ghost)
             random = rand() % 4;
         }
 
-        // Update direction
+        // Update direction and move
         ghost->direction = random; 
         move_character(ghost);
-        
     }
+
+    // Draw ghost
+    attron(COLOR_PAIR(ghost_color));
+    mvaddch(ghost->y, ghost->x, '@');
+    attroff(COLOR_PAIR(ghost_color));
 
 }
 
