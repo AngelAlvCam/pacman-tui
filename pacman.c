@@ -8,6 +8,7 @@ typedef struct character
     // Position
     int x;
     int y;
+    char direction;
 } character;
 
 /*
@@ -50,7 +51,7 @@ int board[BOARD_HEIGHT][BOARD_WIDTH] = {
 };
 
 void draw_board();
-void move_character(character*, char);
+void move_character(character*);
 
 int main()
 {
@@ -65,8 +66,8 @@ int main()
 
     draw_board();
 
-    // Create chacter pacman
-    character pacman = {13, 23};
+    // Create chacter pacman with default position and direction
+    character pacman = {13, 23, 'r'};
 
     // Draw chracter
     attron(COLOR_PAIR(2));
@@ -80,27 +81,26 @@ int main()
         }
         mvaddch(pacman.y, pacman.x, ' ');
 
-        int direction = ' ';
         switch (ch)
         {
         case KEY_LEFT:
-            direction = 'l';
+            pacman.direction = 'l';
             break;
             
         case KEY_RIGHT:
-            direction = 'r';
+            pacman.direction = 'r';
             break;
 
         case KEY_DOWN:
-            direction = 'd';
+            pacman.direction = 'd';
             break;
         
         case KEY_UP:
-            direction = 'u';
+            pacman.direction = 'u';
             break;
         }
 
-        move_character(&pacman, direction);
+        move_character(&pacman);
         mvaddch(pacman.y, pacman.x, '@');
         refresh();
     }
@@ -115,9 +115,9 @@ int main()
     Move a character across the board by one unit in a specified direction
     direction can be 'l', 'r', 'd', 'u' for left, right, down and up.
 */
-void move_character(character* char_moving, char direction)
+void move_character(character* char_moving)
 {
-    switch(direction)
+    switch(char_moving->direction)
     {
         case 'l':
             int left_index = char_moving->x - 1;
