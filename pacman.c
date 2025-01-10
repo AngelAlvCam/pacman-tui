@@ -57,12 +57,13 @@ void draw_board();
 int move_character(character*);
 void move_ghost(character*, int);
 void move_pacman(character*, int);
+int collision(character*, character*);
 
 int main()
 {
     initscr();
     keypad(stdscr, TRUE); // Enables direction keys
-    timeout(-1);
+    timeout(0);
     curs_set(0);
 
     // Enables color    
@@ -74,10 +75,10 @@ int main()
     draw_board();
 
     // Create chacter pacman with default position and direction
-    character pacman = {{17,17}, {23,23}, 0}; // 1 == right
+    character pacman = {{6,6}, {23,23}, 2}; // 1 == right
 
     // Create ghost character
-    character ghost = {{10,10}, {23,23}, 1};
+    character ghost = {{6,6}, {12,12}, 1};
 
     // Draw chracter
     while (true)
@@ -117,16 +118,55 @@ int main()
         mvprintw(2, BOARD_WIDTH + 1, "ghost : x_old = %2d, y_old = %2d, direction = %d", ghost.x[0], ghost.y[0], ghost.direction);
         mvprintw(3, BOARD_WIDTH + 1, "        x_new = %2d, y_new = %2d", ghost.x[1], ghost.y[1]);
 
-
         refresh();
+
+        if (collision(&pacman, &ghost))
+        {
+            mvaddstr(4, BOARD_WIDTH + 1, "COLLISION");
+            refresh();
+            break;
+        }
+
         usleep(150000);
     }
 
+    timeout(-1);
     getch();
-
     endwin();
 
     return 0;
+}
+
+/*
+    Functions that detects a collision between two given characters
+*/
+int collision(character* char_1, character* char_2)
+{
+    // This case triggers if one character is not moving and the other overlaps with him
+    // or if both characters arrive at the same at the same time
+    if (char_1->x[1] == char_2->x[1] && char_1->y[1] == char_2->y[1])
+    {
+        return TRUE;
+    }
+
+    // Check complex cases
+    else
+    {
+        // If they are moving in the same row
+        if (char_1->y[1] == char_2->y[1] && char_1->x[0] == char_2->x[1] && char_1->x[1] == char_2->x[0])
+        {
+            return TRUE;
+        }
+
+        // If they are moving in the same colum
+        if (char_1->x[1] == char_2->x[1] && char_1->y[0] == char_2->y[1] && char_1->y[1] == char_2->y[0])
+        {
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+
 }
 
 /*
@@ -199,9 +239,8 @@ int move_character(character* char_moving)
 {
     int move = FALSE;
     
-    // Store old position
     char_moving->x[0] = char_moving->x[1];
-    char_moving->y[0] = char_moving->y[0];
+    char_moving->y[0] = char_moving->y[1];
 
     switch(char_moving->direction)
     {
