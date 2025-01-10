@@ -9,8 +9,8 @@
 typedef struct character
 {
     // Position
-    int x;
-    int y;
+    int x[2];
+    int y[2];
     int direction;
 } character;
 
@@ -62,7 +62,7 @@ int main()
 {
     initscr();
     keypad(stdscr, TRUE); // Enables direction keys
-    timeout(0);
+    timeout(-1);
     curs_set(0);
 
     // Enables color    
@@ -74,10 +74,10 @@ int main()
     draw_board();
 
     // Create chacter pacman with default position and direction
-    character pacman = {13, 23, 1}; // 1 == right
+    character pacman = {{17,17}, {23,23}, 0}; // 1 == right
 
     // Create ghost character
-    character ghost = {12, 23, 0};
+    character ghost = {{10,10}, {23,23}, 1};
 
     // Draw chracter
     while (true)
@@ -109,13 +109,20 @@ int main()
 
         // Draw pacman and update position
         move_pacman(&pacman, 2);
+        mvprintw(0, BOARD_WIDTH + 1, "pacman: x_old = %2d, y_old = %2d, direction = %d", pacman.x[0], pacman.y[0], pacman.direction);
+        mvprintw(1, BOARD_WIDTH + 1, "        x_new = %2d, y_new = %2d", pacman.x[1], pacman.y[1]);
 
         // Draw ghost
         move_ghost(&ghost, 3);
+        mvprintw(2, BOARD_WIDTH + 1, "ghost : x_old = %2d, y_old = %2d, direction = %d", ghost.x[0], ghost.y[0], ghost.direction);
+        mvprintw(3, BOARD_WIDTH + 1, "        x_new = %2d, y_new = %2d", ghost.x[1], ghost.y[1]);
+
 
         refresh();
         usleep(150000);
     }
+
+    getch();
 
     endwin();
 
@@ -128,33 +135,32 @@ int main()
 */
 void move_pacman(character* pacman, int pacman_color)
 {
-    // Add points if the cell value is 0, then flip them to -1
-    if (board[pacman->y][pacman->x] == 0)
-    {
-        // increase one point and mark the cell as 'no points left'
-        board[pacman->y][pacman->x] = -1;
-    }
-
     // Try to move
-    mvaddch(pacman->y, pacman->x, ' '); // put empty space in current position because there aren't points left in that cell
+    mvaddch(pacman->y[1], pacman->x[1], ' '); // put empty space in current position because there aren't points left in that cell
     move_character(pacman);
     attron(COLOR_PAIR(pacman_color));
-    mvaddch(pacman->y, pacman->x, '@');
+    mvaddch(pacman->y[1], pacman->x[1], '@');
     attroff(COLOR_PAIR(pacman_color));
-
+    
+    // Add points if the cell value is 0, then flip them to -1
+    if (board[pacman->y[1]][pacman->x[1]] == 0)
+    {
+        // increase one point and mark the cell as 'no points left'
+        board[pacman->y[1]][pacman->x[1]] = -1;
+    }
 }
 
 void move_ghost(character* ghost, int ghost_color)
 {
     // if pacman has passed in the current cell, draw empty
     // otherwise, draw a bullet point
-    if (board[ghost->y][ghost->x] == 0)
+    if (board[ghost->y[1]][ghost->x[1]] == 0)
     {
-        mvaddch(ghost->y, ghost->x, ACS_BULLET);
+        mvaddch(ghost->y[1], ghost->x[1], ACS_BULLET);
     }
     else
     {
-        mvaddch(ghost->y, ghost->x, ' ');
+        mvaddch(ghost->y[1], ghost->x[1], ' ');
     }
         
     /* Try to move in the current direnction of the ghost, if there is a collision
@@ -176,7 +182,7 @@ void move_ghost(character* ghost, int ghost_color)
 
     // Draw ghost
     attron(COLOR_PAIR(ghost_color));
-    mvaddch(ghost->y, ghost->x, '@');
+    mvaddch(ghost->y[1], ghost->x[1], '@');
     attroff(COLOR_PAIR(ghost_color));
 
 }
@@ -192,45 +198,49 @@ void move_ghost(character* ghost, int ghost_color)
 int move_character(character* char_moving)
 {
     int move = FALSE;
+    
+    // Store old position
+    char_moving->x[0] = char_moving->x[1];
+    char_moving->y[0] = char_moving->y[0];
 
     switch(char_moving->direction)
     {
         case 0: // left
-            int left_index = char_moving->x - 1;
-            int left_char = left_index < 0 ? 0 : board[char_moving->y][left_index];
+            int left_index = char_moving->x[1] - 1;
+            int left_char = left_index < 0 ? 0 : board[char_moving->y[1]][left_index];
             if (left_char <= 0)
             {
-                char_moving->x--;
+                char_moving->x[1]--;
                 move = TRUE;
             }
             break;
 
         case 1: // right 
-            int right_index = char_moving->x + 1;
-            int right_char = right_index >= 28 ? 0 : board[char_moving->y][right_index];
+            int right_index = char_moving->x[1] + 1;
+            int right_char = right_index >= 28 ? 0 : board[char_moving->y[1]][right_index];
             if (right_char <= 0) 
             {
-                char_moving->x++;
+                char_moving->x[1]++;
                 move = TRUE;
             }
             break;
         
         case 2: // down
-            int down_index = char_moving->y + 1;
-            int down_char = down_index >= 31 ? 0 : board[down_index][char_moving->x];
+            int down_index = char_moving->y[1] + 1;
+            int down_char = down_index >= 31 ? 0 : board[down_index][char_moving->x[1]];
             if (down_char <= 0)
             {
-                char_moving->y++;
+                char_moving->y[1]++;
                 move = TRUE;
             }
             break;
 
         case 3: // up
-            int up_index = char_moving->y - 1;
-            int up_char = up_index < 0 ? 0 : board[up_index][char_moving->x];
+            int up_index = char_moving->y[1] - 1;
+            int up_char = up_index < 0 ? 0 : board[up_index][char_moving->x[1]];
             if (up_char <= 0)
             {
-                char_moving->y--;
+                char_moving->y[1]--;
                 move = TRUE;
             }
             break;
