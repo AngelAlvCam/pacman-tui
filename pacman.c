@@ -284,6 +284,26 @@ int move_character(character* char_moving)
             }
             break;
     }
+
+    // Portals?
+    if (char_moving->x[1] < 0)
+    {
+        char_moving->x[1] = BOARD_WIDTH - 1;
+    }
+    else if (char_moving->x[1] >= BOARD_WIDTH)
+    {
+        char_moving->x[1] = 0;
+    }
+
+    if (char_moving->y[1] < 0)
+    {
+        char_moving->y[1] = BOARD_HEIGHT - 1;
+    }
+    else if (char_moving->y[1] >= BOARD_HEIGHT)
+    {
+        char_moving->y[1] = 0;
+    }
+
     return move;
 }
 
