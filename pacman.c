@@ -14,6 +14,10 @@ typedef struct character
     int direction;
 } character;
 
+int score = 0; // Global variable to store the score
+int dots = 252;
+int dots_counter = 0;
+
 /*
 1 = wall
 0 = point
@@ -43,7 +47,7 @@ int board[BOARD_HEIGHT][BOARD_WIDTH] = {
         {1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1},
         {1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1},
         {1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1},
-        {1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,1},
+        {1,0,0,0,1,1,0,0,0,0,0,0,0,-1,-1,0,0,0,0,0,0,0,1,1,0,0,0,1},
         {1,1,1,0,1,1,0,1,1,0,1,1,1,1,1,1,1,1,0,1,1,0,1,1,0,1,1,1},
         {1,1,1,0,1,1,0,1,1,0,1,1,1,1,1,1,1,1,0,1,1,0,1,1,0,1,1,1},
         {1,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,0,1},
@@ -112,20 +116,26 @@ int main()
         move_pacman(&pacman, 2);
         mvprintw(0, BOARD_WIDTH + 1, "pacman: x_old = %2d, y_old = %2d, direction = %d", pacman.x[0], pacman.y[0], pacman.direction);
         mvprintw(1, BOARD_WIDTH + 1, "        x_new = %2d, y_new = %2d", pacman.x[1], pacman.y[1]);
+        mvprintw(5, BOARD_WIDTH + 1, "score: %d", score);
 
         // Draw ghost
         move_ghost(&ghost, 3);
         mvprintw(2, BOARD_WIDTH + 1, "ghost : x_old = %2d, y_old = %2d, direction = %d", ghost.x[0], ghost.y[0], ghost.direction);
         mvprintw(3, BOARD_WIDTH + 1, "        x_new = %2d, y_new = %2d", ghost.x[1], ghost.y[1]);
 
-        refresh();
+        if (dots_counter == dots)
+        {
+            mvaddstr(4, BOARD_WIDTH + 1, "you win!");
+            break;
+        }
 
         if (collision(&pacman, &ghost))
         {
             mvaddstr(4, BOARD_WIDTH + 1, "COLLISION");
-            refresh();
             break;
         }
+
+        refresh();
 
         usleep(150000);
     }
@@ -186,6 +196,8 @@ void move_pacman(character* pacman, int pacman_color)
     if (board[pacman->y[1]][pacman->x[1]] == 0)
     {
         // increase one point and mark the cell as 'no points left'
+        score += 10;
+        dots_counter++;
         board[pacman->y[1]][pacman->x[1]] = -1;
     }
 }
