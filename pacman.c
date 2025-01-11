@@ -12,6 +12,8 @@ typedef struct character
     int x[2];
     int y[2];
     int direction;
+    int color;
+    // status: alive or dead
 } character;
 
 int score = 0; // Global variable to store the score
@@ -37,9 +39,9 @@ int board[BOARD_HEIGHT][BOARD_WIDTH] = {
         {2,2,2,2,2,1,0,1,1,1,1,1,0,1,1,0,1,1,1,1,1,0,1,2,2,2,2,2},
         {2,2,2,2,2,1,0,1,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,1,1,0,1,2,2,2,2,2},
         {2,2,2,2,2,1,0,1,1,-1,1,1,1,1,1,1,1,1,-1,1,1,0,1,2,2,2,2,2},
-        {1,1,1,1,1,1,0,1,1,-1,1,2,2,2,2,2,2,1,-1,1,1,0,1,1,1,1,1,1},
-  {-1,-1,-1,-1,-1,-1,0,0,0,-1,1,2,2,2,2,2,2,1,-1,0,0,0,-1,-1,-1,-1,-1,-1},
-        {1,1,1,1,1,1,0,1,1,-1,1,2,2,2,2,2,2,1,-1,1,1,0,1,1,1,1,1,1},
+        {1,1,1,1,1,1,0,1,1,-1,1,-1,-1,-1,-1,-1,-1,1,-1,1,1,0,1,1,1,1,1,1},
+  {-1,-1,-1,-1,-1,-1,0,0,0,-1,1,-1,-1,-1,-1,-1,-1,1,-1,0,0,0,-1,-1,-1,-1,-1,-1},
+        {1,1,1,1,1,1,0,1,1,-1,1,-1,-1,-1,-1,-1,-1,1,-1,1,1,0,1,1,1,1,1,1},
         {2,2,2,2,2,1,0,1,1,-1,1,1,1,1,1,1,1,1,-1,1,1,0,1,2,2,2,2,2},
         {2,2,2,2,2,1,0,1,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,1,1,0,1,2,2,2,2,2},
         {2,2,2,2,2,1,0,1,1,-1,1,1,1,1,1,1,1,1,-1,1,1,0,1,2,2,2,2,2},
@@ -62,6 +64,8 @@ int move_character(character*);
 void move_ghost(character*, int);
 void move_pacman(character*, int);
 int collision(character*, character*);
+void draw_ghosts(character*);
+int check_collisions(character*, character*);
 
 int main()
 {
@@ -75,14 +79,19 @@ int main()
     init_pair(1, COLOR_BLUE, COLOR_BLACK);
     init_pair(2, COLOR_YELLOW, COLOR_BLACK); // Pacman color
     init_pair(3, COLOR_RED, COLOR_BLACK); // Red ghost color
+    init_pair(4, COLOR_CYAN, COLOR_BLACK); // 
 
     draw_board();
 
     // Create chacter pacman with default position and direction
-    character pacman = {{6,6}, {23,23}, 2}; // 1 == right
+    character pacman = {{13,13}, {23,23}, 1, 2}; // 1 == right
 
     // Create ghost character
-    character ghost = {{6,6}, {12,12}, 1};
+    // character ghost = {{6,6}, {12,12}, 1};
+    character ghosts[2] = {
+        {{6,6}, {12,12}, 1, 3},
+        {{13,13}, {17,17}, 1, 4},
+    };
 
     // Draw chracter
     while (true)
@@ -113,15 +122,13 @@ int main()
         }
 
         // Draw pacman and update position
-        move_pacman(&pacman, 2);
+        move_pacman(&pacman, pacman.color);
         mvprintw(0, BOARD_WIDTH + 1, "pacman: x_old = %2d, y_old = %2d, direction = %d", pacman.x[0], pacman.y[0], pacman.direction);
         mvprintw(1, BOARD_WIDTH + 1, "        x_new = %2d, y_new = %2d", pacman.x[1], pacman.y[1]);
         mvprintw(5, BOARD_WIDTH + 1, "score: %d", score);
 
-        // Draw ghost
-        move_ghost(&ghost, 3);
-        mvprintw(2, BOARD_WIDTH + 1, "ghost : x_old = %2d, y_old = %2d, direction = %d", ghost.x[0], ghost.y[0], ghost.direction);
-        mvprintw(3, BOARD_WIDTH + 1, "        x_new = %2d, y_new = %2d", ghost.x[1], ghost.y[1]);
+        // Draw ghosts
+        draw_ghosts(ghosts);
 
         if (dots_counter == dots)
         {
@@ -129,7 +136,8 @@ int main()
             break;
         }
 
-        if (collision(&pacman, &ghost))
+        // 
+        if (check_collisions(&pacman, ghosts))
         {
             mvaddstr(4, BOARD_WIDTH + 1, "COLLISION");
             break;
@@ -145,6 +153,38 @@ int main()
     endwin();
 
     return 0;
+}
+
+/*
+    Function to check if there has been a collision between pacman
+    and a ghost
+*/
+int check_collisions(character* pacman, character* ghosts)
+{
+    character* current = ghosts;
+    for (int i = 0; i < 2; i++)
+    {
+        if (collision(pacman, current))
+        {
+            return TRUE;
+        }
+        current++;
+    }
+
+    return FALSE;
+}
+
+/*
+    Function to draw the ghosts and move them through the board
+*/
+void draw_ghosts(character* ghosts)
+{
+    character* current = ghosts;
+    for (int i = 0; i < 2; i++)
+    {
+        move_ghost(current, current->color);
+        current++;
+    }
 }
 
 /*
