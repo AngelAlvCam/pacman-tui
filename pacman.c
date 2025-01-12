@@ -5,6 +5,10 @@
 
 #define BOARD_WIDTH 28
 #define BOARD_HEIGHT 31
+#define GHOSTS_NUMBER 4
+#define TOTAL_DOTS 252
+#define GHOST_SPAWN_X 11
+#define GHOST_SPAWN_Y 15
 
 typedef struct character
 {
@@ -13,12 +17,12 @@ typedef struct character
     int y[2];
     int direction;
     int color;
-    // status: alive or dead
+    int status; // -1 cage, 0 dead, 1 hunting 
 } character;
 
 int score = 0; // Global variable to store the score
-int dots = 252;
 int dots_counter = 0;
+int dizzy = 0; // Global variable that determines the status of a ghost
 
 /*
 1 = wall
@@ -29,7 +33,7 @@ int board[BOARD_HEIGHT][BOARD_WIDTH] = {
         {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
         {1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1},
         {1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1},
-        {1,0,1,2,2,1,0,1,2,2,2,1,0,1,1,0,1,2,2,2,1,0,1,2,2,1,0,1},
+        {1,-2,1,2,2,1,0,1,2,2,2,1,0,1,1,0,1,2,2,2,1,0,1,2,2,1,-2,1},
         {1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1},
         {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
         {1,0,1,1,1,1,0,1,1,0,1,1,1,1,1,1,1,1,0,1,1,0,1,1,1,1,0,1},
@@ -49,7 +53,7 @@ int board[BOARD_HEIGHT][BOARD_WIDTH] = {
         {1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1},
         {1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1},
         {1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1},
-        {1,0,0,0,1,1,0,0,0,0,0,0,0,-1,-1,0,0,0,0,0,0,0,1,1,0,0,0,1},
+        {1,-2,0,0,1,1,0,0,0,0,0,0,0,-1,-1,0,0,0,0,0,0,0,1,1,0,0,-2,1},
         {1,1,1,0,1,1,0,1,1,0,1,1,1,1,1,1,1,1,0,1,1,0,1,1,0,1,1,1},
         {1,1,1,0,1,1,0,1,1,0,1,1,1,1,1,1,1,1,0,1,1,0,1,1,0,1,1,1},
         {1,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,0,1},
@@ -80,17 +84,20 @@ int main()
     init_pair(2, COLOR_YELLOW, COLOR_BLACK); // Pacman color
     init_pair(3, COLOR_RED, COLOR_BLACK); // Red ghost color
     init_pair(4, COLOR_CYAN, COLOR_BLACK); // 
+    init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
+    init_pair(6, COLOR_GREEN, COLOR_BLACK);
 
     draw_board();
 
     // Create chacter pacman with default position and direction
-    character pacman = {{13,13}, {23,23}, 1, 2}; // 1 == right
+    character pacman = {{13,13}, {23,23}, 1, 2, 0}; // 1 == right
 
-    // Create ghost character
-    // character ghost = {{6,6}, {12,12}, 1};
-    character ghosts[2] = {
-        {{6,6}, {12,12}, 1, 3},
-        {{13,13}, {17,17}, 1, 4},
+    // Create ghost character, default direction is up (3) to get out of the cage when the game starts
+    character ghosts[GHOSTS_NUMBER] = {
+        {{13, 13}, {11, 11}, 0, 3, 1}, 
+        {{GHOST_SPAWN_X + 1, GHOST_SPAWN_X + 1}, {GHOST_SPAWN_Y, GHOST_SPAWN_Y}, 3, 4, 0}, 
+        {{GHOST_SPAWN_X + 2, GHOST_SPAWN_X + 2}, {GHOST_SPAWN_Y, GHOST_SPAWN_Y}, 3, 5, 0}, 
+        {{GHOST_SPAWN_X + 3, GHOST_SPAWN_X + 3}, {GHOST_SPAWN_Y, GHOST_SPAWN_Y}, 3, 6, 0}, 
     };
 
     // Draw chracter
@@ -130,7 +137,7 @@ int main()
         // Draw ghosts
         draw_ghosts(ghosts);
 
-        if (dots_counter == dots)
+        if (dots_counter == TOTAL_DOTS)
         {
             mvaddstr(4, BOARD_WIDTH + 1, "you win!");
             break;
@@ -146,6 +153,16 @@ int main()
         refresh();
 
         usleep(150000);
+        
+        // If dizzy flag has been enabled, count until 30
+        if (dizzy)
+        {
+            dizzy++;
+            if (dizzy == 30)
+            {
+                dizzy = 0;
+            }
+        }
     }
 
     timeout(-1);
@@ -161,17 +178,20 @@ int main()
 */
 int check_collisions(character* pacman, character* ghosts)
 {
+    int collision_flag = FALSE;
+
     character* current = ghosts;
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < GHOSTS_NUMBER; i++)
     {
-        if (collision(pacman, current))
+        // Status must be 1 (active)
+        if (!dizzy && current->status == 1 && collision(pacman, current))
         {
-            return TRUE;
+            collision_flag = TRUE;
         }
         current++;
     }
 
-    return FALSE;
+    return collision_flag;
 }
 
 /*
@@ -180,10 +200,20 @@ int check_collisions(character* pacman, character* ghosts)
 void draw_ghosts(character* ghosts)
 {
     character* current = ghosts;
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < GHOSTS_NUMBER; i++)
     {
-        move_ghost(current, current->color);
-        current++;
+        if (current->status == 1) // active status
+        {
+            if (dizzy)
+            {
+                move_ghost(current, 1);
+            }
+            else
+            {
+                move_ghost(current, current->color);
+            }
+            current++;
+        }
     }
 }
 
@@ -240,6 +270,14 @@ void move_pacman(character* pacman, int pacman_color)
         dots_counter++;
         board[pacman->y[1]][pacman->x[1]] = -1;
     }
+    // if energizer dot... dizzy all the ghosts
+    else if (board[pacman->y[1]][pacman->x[1]] == -2)
+    {
+        dots_counter++;
+        board[pacman->y[1]][pacman->x[1]] = -1;
+        // Disable all the ghosts
+        dizzy = 1;
+    }
 }
 
 void move_ghost(character* ghost, int ghost_color)
@@ -250,10 +288,16 @@ void move_ghost(character* ghost, int ghost_color)
     {
         mvaddch(ghost->y[1], ghost->x[1], ACS_BULLET);
     }
-    else
+    else if (board[ghost->y[1]][ghost->x[1]] == -1)
     {
         mvaddch(ghost->y[1], ghost->x[1], ' ');
     }
+    else if (board[ghost->y[1]][ghost->x[1]] == -2)
+    {
+        mvaddch(ghost->y[1], ghost->x[1], ACS_DIAMOND);
+    }
+    
+    // Ghosts don't override the board, so... before moving, get the items in the current 
         
     /* Try to move in the current direnction of the ghost, if there is a collision
     with a wall, try to move in a different location*/
@@ -433,6 +477,11 @@ void draw_board()
             {
                 // Draw points
                 mvaddch(row, col, ACS_BULLET);
+            }
+            else if (board[row][col] == -2)
+            {
+                // Special points?
+                mvaddch(row, col, ACS_DIAMOND);
             }
         }
     }
