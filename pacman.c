@@ -95,7 +95,8 @@ int main()
     character characters[1 + GHOSTS_NUMBER] = {
         {{13,13}, {23,23}, 1, 2, 0},
         {{13, 13}, {11, 11}, 0, 3, 1}, 
-        {{GHOST_SPAWN_X + 1, GHOST_SPAWN_X + 1}, {GHOST_SPAWN_Y, GHOST_SPAWN_Y}, 3, 4, 0}, 
+        {{14, 14}, {11, 11}, 0, 4, 1},
+        //{{GHOST_SPAWN_X + 1, GHOST_SPAWN_X + 1}, {GHOST_SPAWN_Y, GHOST_SPAWN_Y}, 3, 4, 0}, 
         {{GHOST_SPAWN_X + 2, GHOST_SPAWN_X + 2}, {GHOST_SPAWN_Y, GHOST_SPAWN_Y}, 3, 5, 0}, 
         {{GHOST_SPAWN_X + 3, GHOST_SPAWN_X + 3}, {GHOST_SPAWN_Y, GHOST_SPAWN_Y}, 3, 6, 0}, 
     };
@@ -111,6 +112,10 @@ int main()
     {
         // Draw score
         mvprintw(0, BOARD_WIDTH + 1, "score: %5d", score);
+
+        // Info about ghost1
+        mvprintw(1, BOARD_WIDTH + 1, "ghost1 -> x = %2d, y = %2d, direction = %d, color = %d", characters[1].x[1], characters[1].y[1], characters[1].direction, characters[1].color);
+        mvprintw(2, BOARD_WIDTH + 1, "ghost2 -> x = %2d, y = %2d, direction = %d, color = %d", characters[2].x[1], characters[2].y[1], characters[2].direction, characters[2].color);
 
         int ch = getch();
         if (ch == 'q')
@@ -284,11 +289,10 @@ void move_ghosts(character* ghosts)
             if (!move_character(current))
             {
                 // Change direction to a valid one 
-                srand(time(0));
-                int random = rand() % 4;
+                int random = arc4random() % 4;
                 while (random == current->direction)
                 {
-                    random = rand() % 4;
+                    random = arc4random() % 4;
                 }
                 current->direction = random;
 
