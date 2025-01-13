@@ -63,13 +63,15 @@ int board[BOARD_HEIGHT][BOARD_WIDTH] = {
         {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
 };
 
+int busy_board[BOARD_HEIGHT][BOARD_WIDTH] = {0};
+
 void draw_board();
 int move_character(character*);
-void move_ghost(character*, int);
-void move_pacman(character*, int);
+void move_ghosts(character*);
+void move_pacman(character*);
 int collision(character*, character*);
-void draw_ghosts(character*);
 int check_collisions(character*, character*);
+void draw_characters(character*);
 
 int main()
 {
@@ -89,20 +91,27 @@ int main()
 
     draw_board();
 
-    // Create chacter pacman with default position and direction
-    character pacman = {{13,13}, {23,23}, 1, 2, 0}; // 1 == right
-
     // Create ghost character, default direction is up (3) to get out of the cage when the game starts
-    character ghosts[GHOSTS_NUMBER] = {
+    character characters[1 + GHOSTS_NUMBER] = {
+        {{13,13}, {23,23}, 1, 2, 0},
         {{13, 13}, {11, 11}, 0, 3, 1}, 
         {{GHOST_SPAWN_X + 1, GHOST_SPAWN_X + 1}, {GHOST_SPAWN_Y, GHOST_SPAWN_Y}, 3, 4, 0}, 
         {{GHOST_SPAWN_X + 2, GHOST_SPAWN_X + 2}, {GHOST_SPAWN_Y, GHOST_SPAWN_Y}, 3, 5, 0}, 
         {{GHOST_SPAWN_X + 3, GHOST_SPAWN_X + 3}, {GHOST_SPAWN_Y, GHOST_SPAWN_Y}, 3, 6, 0}, 
     };
+    
+    // Initialize busy board
+    for (int i = 0; i < GHOSTS_NUMBER + 1; i++)
+    {
+        busy_board[characters[i].y[1]][characters[i].x[1]] = 1;
+    }
 
     // Draw chracter
     while (true)
     {
+        // Draw score
+        mvprintw(0, BOARD_WIDTH + 1, "score: %5d", score);
+
         int ch = getch();
         if (ch == 'q')
         {
@@ -112,39 +121,40 @@ int main()
         switch (ch)
         {
         case KEY_LEFT:
-            pacman.direction = 0; // left
+            characters[0].direction = 0; // left
             break;
             
         case KEY_RIGHT:
-            pacman.direction = 1; // right
+            characters[0].direction = 1; // right
             break;
 
         case KEY_DOWN:
-            pacman.direction = 2; // down
+            characters[0].direction = 2; // down
             break;
         
         case KEY_UP:
-            pacman.direction = 3; // up
+            characters[0].direction = 3; // up
             break;
         }
 
         // Draw pacman and update position
-        move_pacman(&pacman, pacman.color);
-        mvprintw(0, BOARD_WIDTH + 1, "pacman: x_old = %2d, y_old = %2d, direction = %d", pacman.x[0], pacman.y[0], pacman.direction);
-        mvprintw(1, BOARD_WIDTH + 1, "        x_new = %2d, y_new = %2d", pacman.x[1], pacman.y[1]);
-        mvprintw(5, BOARD_WIDTH + 1, "score: %d", score);
+        move_pacman(&characters[0]);
 
-        // Draw ghosts
-        draw_ghosts(ghosts);
+        // Move ghosts
+        move_ghosts(&characters[1]);
 
+        // draw characters
+        draw_characters(characters);
+
+        // Check if the game should stop because the maximum amount of points has been reached
         if (dots_counter == TOTAL_DOTS)
         {
             mvaddstr(4, BOARD_WIDTH + 1, "you win!");
             break;
         }
 
-        // 
-        if (check_collisions(&pacman, ghosts))
+        // Check if the game should stop because of a collision between pacman and a ghost
+        if (check_collisions(&characters[0], &characters[1]))
         {
             mvaddstr(4, BOARD_WIDTH + 1, "COLLISION");
             break;
@@ -195,30 +205,108 @@ int check_collisions(character* pacman, character* ghosts)
 }
 
 /*
-    Function to draw the ghosts and move them through the board
+    Functions that prints all the characters on the board. (pacman and ghosts)
 */
-void draw_ghosts(character* ghosts)
+void draw_characters(character* characters)
 {
+    character* current = characters;
+    
+    // First... print pacman
+    // delete from the old coordinates...
+    if (!busy_board[current->y[0]][current->x[0]]) // Old coordinates aren't busy, then clear
+    {
+        mvaddch(current->y[0], current->x[0], ' ');
+    }
+
+    // Print pacman in its new coordinates
+    attron(COLOR_PAIR(current->color));
+    mvaddch(current->y[1], current->x[1], '@');
+    attroff(COLOR_PAIR(current->color));
+
+    // Print the rest of the characters (ghosts)    
+    current++;
+    for (int i = 1; i < GHOSTS_NUMBER + 1; i++)
+    {
+        // Check if it is necessary to print something in the old coordinates
+        if (!busy_board[current->y[0]][current->x[0]]) // Old coordinates aren't busy, then clear
+        {
+            if (board[current->y[0]][current->x[0]] == 0)
+            {
+                mvaddch(current->y[0], current->x[0], ACS_BULLET);
+            }
+            else if (board[current->y[0]][current->x[0]] == -1)
+            {
+                mvaddch(current->y[0], current->x[0], ' ');
+            }
+            else if (board[current->y[0]][current->x[0]] == -2)
+            {
+                mvaddch(current->y[0], current->x[0], ACS_DIAMOND);
+            }
+            
+        }
+
+        // Draw ghost in its new coords
+        int color;
+        if (dizzy)
+        {
+            // Color blue
+            color = 1;
+        }
+        else
+        {
+            // Real color
+            color = current->color;
+        }
+        attron(COLOR_PAIR(color));
+        mvaddch(current->y[1], current->x[1], '@');
+        attroff(COLOR_PAIR(color));
+
+        // Next ghost
+        current++;
+    }
+}
+
+/*
+    Function to move the ghosts across the board
+*/
+void move_ghosts(character* ghosts)
+{
+    // First... move the ghosts across the board... this is "try to change the coordinates"
     character* current = ghosts;
     for (int i = 0; i < GHOSTS_NUMBER; i++)
     {
         if (current->status == 1) // active status
         {
-            if (dizzy)
+            // Mark the current coords as free
+            busy_board[current->y[1]][current->x[1]]--;
+            
+            // Try to move the current character
+            if (!move_character(current))
             {
-                move_ghost(current, 1);
+                // Change direction to a valid one 
+                srand(time(0));
+                int random = rand() % 4;
+                while (random == current->direction)
+                {
+                    random = rand() % 4;
+                }
+                current->direction = random;
+
+                // Update direction and move
+                move_character(current);
             }
-            else
-            {
-                move_ghost(current, current->color);
-            }
-            current++;
+
+            // Mark the new coordinates as busy
+            busy_board[current->y[1]][current->x[1]]++;
         }
+
+        // Change to the next ghost
+        current++;
     }
 }
 
 /*
-    Functions that detects a collision between two given characters
+    Function that detects a collision between two given characters
 */
 int collision(character* char_1, character* char_2)
 {
@@ -253,14 +341,16 @@ int collision(character* char_1, character* char_2)
     Moves pacman based on its current position and direction members.
     pacman color is the index for the color pallet to print pacman.
 */
-void move_pacman(character* pacman, int pacman_color)
+void move_pacman(character* pacman)
 {
-    // Try to move
-    mvaddch(pacman->y[1], pacman->x[1], ' '); // put empty space in current position because there aren't points left in that cell
+    // Mark the current coordinates as free
+    busy_board[pacman->y[1]][pacman->x[1]]--;
+
+    // Try to move the character in the latest direction
     move_character(pacman);
-    attron(COLOR_PAIR(pacman_color));
-    mvaddch(pacman->y[1], pacman->x[1], '@');
-    attroff(COLOR_PAIR(pacman_color));
+
+    // mark the new coords as busy
+    busy_board[pacman->y[1]][pacman->x[1]]++;
     
     // Add points if the cell value is 0, then flip them to -1
     if (board[pacman->y[1]][pacman->x[1]] == 0)
@@ -273,54 +363,12 @@ void move_pacman(character* pacman, int pacman_color)
     // if energizer dot... dizzy all the ghosts
     else if (board[pacman->y[1]][pacman->x[1]] == -2)
     {
+        score += 10;
         dots_counter++;
         board[pacman->y[1]][pacman->x[1]] = -1;
         // Disable all the ghosts
         dizzy = 1;
     }
-}
-
-void move_ghost(character* ghost, int ghost_color)
-{
-    // if pacman has passed in the current cell, draw empty
-    // otherwise, draw a bullet point
-    if (board[ghost->y[1]][ghost->x[1]] == 0)
-    {
-        mvaddch(ghost->y[1], ghost->x[1], ACS_BULLET);
-    }
-    else if (board[ghost->y[1]][ghost->x[1]] == -1)
-    {
-        mvaddch(ghost->y[1], ghost->x[1], ' ');
-    }
-    else if (board[ghost->y[1]][ghost->x[1]] == -2)
-    {
-        mvaddch(ghost->y[1], ghost->x[1], ACS_DIAMOND);
-    }
-    
-    // Ghosts don't override the board, so... before moving, get the items in the current 
-        
-    /* Try to move in the current direnction of the ghost, if there is a collision
-    with a wall, try to move in a different location*/
-    if (move_character(ghost) != TRUE)
-    {
-        // Change direction to a valid one 
-        srand(time(0));
-        int random = rand() % 4;
-        while (random == ghost->direction)
-        {
-            random = rand() % 4;
-        }
-
-        // Update direction and move
-        ghost->direction = random; 
-        move_character(ghost);
-    }
-
-    // Draw ghost
-    attron(COLOR_PAIR(ghost_color));
-    mvaddch(ghost->y[1], ghost->x[1], '@');
-    attroff(COLOR_PAIR(ghost_color));
-
 }
 
 /*
