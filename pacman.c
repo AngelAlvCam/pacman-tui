@@ -7,8 +7,9 @@
 #define BOARD_HEIGHT 31
 #define GHOSTS_NUMBER 4
 #define TOTAL_DOTS 252
-#define GHOST_SPAWN_X 11
+#define GHOST_SPAWN_X 12
 #define GHOST_SPAWN_Y 15
+#define DIZZY_LIMIT 60
 
 typedef struct character
 {
@@ -17,7 +18,7 @@ typedef struct character
     int y[2];
     int direction;
     int color;
-    int status; // -1 cage, 0 dead, 1 hunting 
+    int status; // 1 active, 0 in cage  
 } character;
 
 int score = 0; // Global variable to store the score
@@ -66,7 +67,7 @@ int board[BOARD_HEIGHT][BOARD_WIDTH] = {
 int busy_board[BOARD_HEIGHT][BOARD_WIDTH] = {0};
 
 void draw_board();
-int move_character(character*);
+int move_character(character*, int);
 void move_ghosts(character*);
 void move_pacman(character*);
 int collision(character*, character*);
@@ -94,9 +95,8 @@ int main()
     // Create ghost character, default direction is up (3) to get out of the cage when the game starts
     character characters[1 + GHOSTS_NUMBER] = {
         {{13,13}, {23,23}, 1, 2, 0},
-        {{13, 13}, {11, 11}, 0, 3, 1}, 
-        {{14, 14}, {11, 11}, 0, 4, 1},
-        //{{GHOST_SPAWN_X + 1, GHOST_SPAWN_X + 1}, {GHOST_SPAWN_Y, GHOST_SPAWN_Y}, 3, 4, 0}, 
+        {{GHOST_SPAWN_X, GHOST_SPAWN_X}, {GHOST_SPAWN_Y, GHOST_SPAWN_Y}, 3, 3, 0}, 
+        {{GHOST_SPAWN_X + 1, GHOST_SPAWN_X + 1}, {GHOST_SPAWN_Y, GHOST_SPAWN_Y}, 3, 4, 0},
         {{GHOST_SPAWN_X + 2, GHOST_SPAWN_X + 2}, {GHOST_SPAWN_Y, GHOST_SPAWN_Y}, 3, 5, 0}, 
         {{GHOST_SPAWN_X + 3, GHOST_SPAWN_X + 3}, {GHOST_SPAWN_Y, GHOST_SPAWN_Y}, 3, 6, 0}, 
     };
@@ -114,8 +114,8 @@ int main()
         mvprintw(0, BOARD_WIDTH + 1, "score: %5d", score);
 
         // Info about ghost1
-        mvprintw(1, BOARD_WIDTH + 1, "ghost1 -> x = %2d, y = %2d, direction = %d, color = %d", characters[1].x[1], characters[1].y[1], characters[1].direction, characters[1].color);
-        mvprintw(2, BOARD_WIDTH + 1, "ghost2 -> x = %2d, y = %2d, direction = %d, color = %d", characters[2].x[1], characters[2].y[1], characters[2].direction, characters[2].color);
+        // mvprintw(1, BOARD_WIDTH + 1, "ghost1 -> x = %2d, y = %2d, direction = %d, color = %d", characters[1].x[1], characters[1].y[1], characters[1].direction, characters[1].color);
+        // mvprintw(2, BOARD_WIDTH + 1, "ghost2 -> x = %2d, y = %2d, direction = %d, color = %d", characters[2].x[1], characters[2].y[1], characters[2].direction, characters[2].color);
 
         int ch = getch();
         if (ch == 'q')
@@ -148,6 +148,14 @@ int main()
         // Move ghosts
         move_ghosts(&characters[1]);
 
+        // Check if the game should stop because of a collision between pacman and a ghost
+        if (check_collisions(&characters[0], &characters[1]))
+        {
+            draw_characters(characters);
+            mvaddstr(4, BOARD_WIDTH + 1, "COLLISION");
+            break;
+        }
+
         // draw characters
         draw_characters(characters);
 
@@ -157,27 +165,29 @@ int main()
             mvaddstr(4, BOARD_WIDTH + 1, "you win!");
             break;
         }
-
-        // Check if the game should stop because of a collision between pacman and a ghost
-        if (check_collisions(&characters[0], &characters[1]))
-        {
-            mvaddstr(4, BOARD_WIDTH + 1, "COLLISION");
-            break;
-        }
-
-        refresh();
-
-        usleep(150000);
         
         // If dizzy flag has been enabled, count until 30
         if (dizzy)
         {
             dizzy++;
-            if (dizzy == 30)
+            if (dizzy == 60)
             {
                 dizzy = 0;
             }
         }
+        
+        // Print busy board
+        // for (int i = 0; i < BOARD_HEIGHT; i++)
+        // {
+        //     for (int j = 0; j < BOARD_WIDTH; j++)
+        //     {
+        //         mvprintw(i, j + BOARD_WIDTH + 1, "%d", busy_board[i][j]);
+        //     }
+        // }
+        refresh();
+
+        usleep(150000);
+
     }
 
     timeout(-1);
@@ -193,20 +203,39 @@ int main()
 */
 int check_collisions(character* pacman, character* ghosts)
 {
-    int collision_flag = FALSE;
-
     character* current = ghosts;
+    int flag = FALSE;
     for (int i = 0; i < GHOSTS_NUMBER; i++)
     {
-        // Status must be 1 (active)
-        if (!dizzy && current->status == 1 && collision(pacman, current))
+        if (collision(pacman, current))
         {
-            collision_flag = TRUE;
+            if (dizzy)
+            {
+                // increase score by 200
+                score += 200;
+
+                // Change coordinates of ghost
+                busy_board[current->y[1]][current->x[1]]--;
+
+                current->y[1] = GHOST_SPAWN_Y; 
+                current->x[1] = GHOST_SPAWN_X + i;
+
+                busy_board[current->y[1]][current->x[1]]++;
+
+                // update ghost status
+                current->status = 0;
+                current->direction = 3;
+            }
+            else
+            {
+                // If at least one collision is dettected... return TRUE to break the game
+                flag = TRUE;
+            }
         }
         current++;
     }
 
-    return collision_flag;
+    return flag;
 }
 
 /*
@@ -286,7 +315,7 @@ void move_ghosts(character* ghosts)
             busy_board[current->y[1]][current->x[1]]--;
             
             // Try to move the current character
-            if (!move_character(current))
+            if (!move_character(current, FALSE))
             {
                 // Change direction to a valid one 
                 int random = arc4random() % 4;
@@ -297,11 +326,26 @@ void move_ghosts(character* ghosts)
                 current->direction = random;
 
                 // Update direction and move
-                move_character(current);
+                move_character(current, FALSE);
             }
 
             // Mark the new coordinates as busy
             busy_board[current->y[1]][current->x[1]]++;
+        }
+        else if (current->status == 0)
+        {
+            // Get out of the cage
+            busy_board[current->y[1]][current->x[1]]--;
+            move_character(current, TRUE);
+
+            // Rebuild the wall
+            if (current->y[1] == GHOST_SPAWN_Y - 4)
+            {
+                mvaddch(current->y[1] + 1, current->x[1], ACS_HLINE);
+                current->status = 1;
+            }
+            busy_board[current->y[1]][current->x[1]]++;
+
         }
 
         // Change to the next ghost
@@ -351,7 +395,7 @@ void move_pacman(character* pacman)
     busy_board[pacman->y[1]][pacman->x[1]]--;
 
     // Try to move the character in the latest direction
-    move_character(pacman);
+    move_character(pacman, FALSE);
 
     // mark the new coords as busy
     busy_board[pacman->y[1]][pacman->x[1]]++;
@@ -383,7 +427,7 @@ void move_pacman(character* pacman)
     It updates the x or y members of the character pointer if the movement was
     succesfull.
 */
-int move_character(character* char_moving)
+int move_character(character* char_moving, int not_walls)
 {
     int move = FALSE;
     
@@ -395,7 +439,7 @@ int move_character(character* char_moving)
         case 0: // left
             int left_index = char_moving->x[1] - 1;
             int left_char = left_index < 0 ? 0 : board[char_moving->y[1]][left_index];
-            if (left_char <= 0)
+            if (not_walls || left_char <= 0)
             {
                 char_moving->x[1]--;
                 move = TRUE;
@@ -405,7 +449,7 @@ int move_character(character* char_moving)
         case 1: // right 
             int right_index = char_moving->x[1] + 1;
             int right_char = right_index >= BOARD_WIDTH ? 0 : board[char_moving->y[1]][right_index];
-            if (right_char <= 0) 
+            if (not_walls || right_char <= 0) 
             {
                 char_moving->x[1]++;
                 move = TRUE;
@@ -415,7 +459,7 @@ int move_character(character* char_moving)
         case 2: // down
             int down_index = char_moving->y[1] + 1;
             int down_char = down_index >= BOARD_HEIGHT ? 0 : board[down_index][char_moving->x[1]];
-            if (down_char <= 0)
+            if (not_walls || down_char <= 0)
             {
                 char_moving->y[1]++;
                 move = TRUE;
@@ -425,7 +469,7 @@ int move_character(character* char_moving)
         case 3: // up
             int up_index = char_moving->y[1] - 1;
             int up_char = up_index < 0 ? 0 : board[up_index][char_moving->x[1]];
-            if (up_char <= 0)
+            if (not_walls || up_char <= 0)
             {
                 char_moving->y[1]--;
                 move = TRUE;
