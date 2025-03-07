@@ -73,6 +73,7 @@ void move_pacman(character*);
 int collision(character*, character*);
 int check_collisions(character*, character*);
 void draw_characters(character*);
+void initialize(character*);
 
 int main()
 {
@@ -85,21 +86,16 @@ int main()
     start_color();
     init_pair(1, COLOR_BLUE, COLOR_BLACK);
     init_pair(2, COLOR_YELLOW, COLOR_BLACK); // Pacman color
-    init_pair(3, COLOR_RED, COLOR_BLACK); // Red ghost color
-    init_pair(4, COLOR_CYAN, COLOR_BLACK); // 
+    init_pair(3, COLOR_RED, COLOR_BLACK);
+    init_pair(4, COLOR_CYAN, COLOR_BLACK);
     init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
     init_pair(6, COLOR_GREEN, COLOR_BLACK);
 
     draw_board();
 
     // Create ghost character, default direction is up (3) to get out of the cage when the game starts
-    character characters[1 + GHOSTS_NUMBER] = {
-        {{13,13}, {23,23}, 1, 2, 0},
-        {{GHOST_SPAWN_X, GHOST_SPAWN_X}, {GHOST_SPAWN_Y, GHOST_SPAWN_Y}, 3, 3, 0}, 
-        {{GHOST_SPAWN_X + 1, GHOST_SPAWN_X + 1}, {GHOST_SPAWN_Y, GHOST_SPAWN_Y}, 3, 4, 0},
-        {{GHOST_SPAWN_X + 2, GHOST_SPAWN_X + 2}, {GHOST_SPAWN_Y, GHOST_SPAWN_Y}, 3, 5, 0}, 
-        {{GHOST_SPAWN_X + 3, GHOST_SPAWN_X + 3}, {GHOST_SPAWN_Y, GHOST_SPAWN_Y}, 3, 6, 0}, 
-    };
+    character* characters = calloc(5, sizeof(character));
+    initialize(characters);
     
     // Initialize busy board
     for (int i = 0; i < GHOSTS_NUMBER + 1; i++)
@@ -114,8 +110,6 @@ int main()
         mvprintw(0, BOARD_WIDTH + 1, "score: %5d", score);
 
         // Info about ghost1
-        // mvprintw(1, BOARD_WIDTH + 1, "ghost1 -> x = %2d, y = %2d, direction = %d, color = %d", characters[1].x[1], characters[1].y[1], characters[1].direction, characters[1].color);
-        // mvprintw(2, BOARD_WIDTH + 1, "ghost2 -> x = %2d, y = %2d, direction = %d, color = %d", characters[2].x[1], characters[2].y[1], characters[2].direction, characters[2].color);
 
         int ch = getch();
         if (ch == 'q')
@@ -193,8 +187,34 @@ int main()
     timeout(-1);
     getch();
     endwin();
+    free(characters);
 
     return 0;
+}
+
+void initialize(character* characters)
+{
+    // Set pac-man attributes
+    characters->x[0] = 13;
+    characters->x[1] = 13;
+    characters->y[0] = 23;
+    characters->y[1] = 23;
+    characters->direction = 1;
+    characters->color = 2;
+    characters->status = 0;
+
+    // Set ghosts attributes
+    for (int i = 0; i < GHOSTS_NUMBER; i++)
+    {
+        characters++;
+        characters->x[0] = GHOST_SPAWN_X + i;
+        characters->x[1] = GHOST_SPAWN_X + i;
+        characters->y[0] = GHOST_SPAWN_Y;
+        characters->y[1] = GHOST_SPAWN_Y;
+        characters->direction = 3;
+        characters->color = 3 + i;
+        characters->status = 0;
+    }
 }
 
 /*
