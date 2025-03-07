@@ -100,7 +100,7 @@ int main()
     // Initialize busy board
     for (int i = 0; i < GHOSTS_NUMBER + 1; i++)
     {
-        busy_board[characters[i].y[1]][characters[i].x[1]] = 1;
+        busy_board[(characters + i)->y[1]][(characters + i)->x[1]] = 1;
     }
 
     // Draw chracter
@@ -120,30 +120,30 @@ int main()
         switch (ch)
         {
         case KEY_LEFT:
-            characters[0].direction = 0; // left
+            characters->direction = 0; // left
             break;
             
         case KEY_RIGHT:
-            characters[0].direction = 1; // right
+            characters->direction = 1; // right
             break;
 
         case KEY_DOWN:
-            characters[0].direction = 2; // down
+            characters->direction = 2; // down
             break;
         
         case KEY_UP:
-            characters[0].direction = 3; // up
+            characters->direction = 3; // up
             break;
         }
 
         // Draw pacman and update position
-        move_pacman(&characters[0]);
+        move_pacman(characters);
 
         // Move ghosts
-        move_ghosts(&characters[1]);
+        move_ghosts(characters + 1);
 
         // Check if the game should stop because of a collision between pacman and a ghost
-        if (check_collisions(&characters[0], &characters[1]))
+        if (check_collisions(characters, characters + 1))
         {
             draw_characters(characters);
             mvaddstr(4, BOARD_WIDTH + 1, "COLLISION");
