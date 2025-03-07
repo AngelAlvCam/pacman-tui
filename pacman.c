@@ -97,11 +97,8 @@ int main()
     character* characters = calloc(5, sizeof(character));
     initialize(characters);
     
-    // Initialize busy board
-    for (int i = 0; i < GHOSTS_NUMBER + 1; i++)
-    {
-        busy_board[(characters + i)->y[1]][(characters + i)->x[1]] = 1;
-    }
+    // Lives
+    int lives = 3;
 
     // Draw chracter
     while (true)
@@ -146,8 +143,19 @@ int main()
         if (check_collisions(characters, characters + 1))
         {
             draw_characters(characters);
-            mvaddstr(4, BOARD_WIDTH + 1, "COLLISION");
-            break;
+            refresh();
+            lives--;
+            if (lives == 0) 
+            {
+                break;
+            }
+            sleep(1);
+            initialize(characters);
+            draw_board();
+            draw_characters(characters);
+            refresh();
+            sleep(2);
+            continue;
         }
 
         // draw characters
@@ -169,22 +177,12 @@ int main()
                 dizzy = 0;
             }
         }
-        
-        // Print busy board
-        // for (int i = 0; i < BOARD_HEIGHT; i++)
-        // {
-        //     for (int j = 0; j < BOARD_WIDTH; j++)
-        //     {
-        //         mvprintw(i, j + BOARD_WIDTH + 1, "%d", busy_board[i][j]);
-        //     }
-        // }
-        refresh();
 
+        refresh();
         usleep(150000);
 
     }
 
-    timeout(-1);
     getch();
     endwin();
     free(characters);
@@ -194,26 +192,36 @@ int main()
 
 void initialize(character* characters)
 {
+    // Set busy board as free in every position of the board
+    for (int i = 0; i < BOARD_HEIGHT; i++)
+    {
+        for (int j = 0; j < BOARD_WIDTH; j++)
+        {
+            busy_board[i][j] = 0;
+        }
+    }
+
     // Set pac-man attributes
     characters->x[0] = 13;
-    characters->x[1] = 13;
     characters->y[0] = 23;
+    characters->x[1] = 13;
     characters->y[1] = 23;
     characters->direction = 1;
     characters->color = 2;
     characters->status = 0;
+    busy_board[23][13] = 1; // Set occupied position in busy board
 
     // Set ghosts attributes
     for (int i = 0; i < GHOSTS_NUMBER; i++)
     {
-        characters++;
-        characters->x[0] = GHOST_SPAWN_X + i;
-        characters->x[1] = GHOST_SPAWN_X + i;
-        characters->y[0] = GHOST_SPAWN_Y;
-        characters->y[1] = GHOST_SPAWN_Y;
-        characters->direction = 3;
-        characters->color = 3 + i;
-        characters->status = 0;
+        (characters + i + 1)->x[0] = GHOST_SPAWN_X + i;
+        (characters + i + 1)->y[0] = GHOST_SPAWN_Y;
+        (characters + i + 1)->x[1] = GHOST_SPAWN_X + i;
+        (characters + i + 1)->y[1] = GHOST_SPAWN_Y;
+        (characters + i + 1)->direction = 3;
+        (characters + i + 1)->color = 3 + i;
+        (characters + i + 1)->status = 0;
+        busy_board[GHOST_SPAWN_Y][GHOST_SPAWN_X + i] = 1; // Set occupied position in busy board
     }
 }
 
@@ -528,6 +536,7 @@ void draw_board()
     {
         for (int col = 0; col < BOARD_WIDTH; col++)
         {
+            mvaddch(row, col, ' ');
             if (board[row][col] == 1)
             {
                 // Get neighbor indexes
