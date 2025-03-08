@@ -106,7 +106,7 @@ int main()
     while (true)
     {
         // Draw score
-        mvprintw(0, BOARD_WIDTH + 1, "%d", score);
+        mvprintw(0, BOARD_WIDTH, "%d", score);
 
         // Info about ghost1
 
@@ -146,12 +146,12 @@ int main()
         {
             draw_characters(characters);
             refresh();
+            sleep(1);
             lives--;
             if (lives == 0) 
             {
                 break;
             }
-            sleep(1);
             initialize(characters);
             draw_board();
             draw_characters(characters);
@@ -200,7 +200,7 @@ void render_lives(int lives)
     attron(COLOR_PAIR(2));
     for (int i = 0; i < lives; i++)
     {
-        mvaddch(1, BOARD_WIDTH + i + 1, '@');
+        mvaddch(1, BOARD_WIDTH + i, '@');
     }
     attroff(COLOR_PAIR(2));
 }
@@ -568,7 +568,7 @@ void draw_board()
 
                 attron(COLOR_PAIR(1));
                 // First check for corner cases:
-                if (down_char == 1 && right_char == 1 & board[down_index][right_index] <= 0)
+                if (down_char == 1 && right_char == 1 && board[down_index][right_index] <= 0)
                 {
                     mvaddch(row, col, ACS_ULCORNER);
                 }
