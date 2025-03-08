@@ -74,6 +74,7 @@ int collision(character*, character*);
 int check_collisions(character*, character*);
 void draw_characters(character*);
 void initialize(character*);
+void render_lives(int);
 
 int main()
 {
@@ -99,12 +100,13 @@ int main()
     
     // Lives
     int lives = 3;
+    render_lives(lives);
 
     // Draw chracter
     while (true)
     {
         // Draw score
-        mvprintw(0, BOARD_WIDTH + 1, "score: %5d", score);
+        mvprintw(0, BOARD_WIDTH + 1, "%d", score);
 
         // Info about ghost1
 
@@ -153,6 +155,7 @@ int main()
             initialize(characters);
             draw_board();
             draw_characters(characters);
+            render_lives(lives);
             refresh();
             sleep(2);
             continue;
@@ -188,6 +191,18 @@ int main()
     free(characters);
 
     return 0;
+}
+
+void render_lives(int lives)
+{
+    move(1, BOARD_WIDTH);
+    clrtoeol();
+    attron(COLOR_PAIR(2));
+    for (int i = 0; i < lives; i++)
+    {
+        mvaddch(1, BOARD_WIDTH + i + 1, '@');
+    }
+    attroff(COLOR_PAIR(2));
 }
 
 void initialize(character* characters)
